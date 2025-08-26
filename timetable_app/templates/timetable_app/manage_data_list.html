@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage {{ title }}</title>
+    <style>
+        nav { background-color: #f2f2f2; padding: 10px; margin-bottom: 20px; }
+        nav a { margin-right: 15px; text-decoration: none; color: #333; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="{% url 'manage_data' %}">Manage Data</a>
+        <a href="{% url 'logout' %}">Logout</a>
+    </nav>
+    <h1>Manage {{ title }}</h1>
+    <a href="{% url 'add_data' model_name %}">Add New {{ title }}</a>
+    <br><br>
+    <table border="1">
+        <thead>
+            <tr>
+                {% if model_name == 'professor' %}
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Departments</th>
+                {% elif model_name == 'stream' %}
+                    <th>Name</th>
+                    <th>Division</th>
+                    <th>Department</th>
+                    <th>Semester</th>
+                {% elif model_name == 'location' %}
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Floor</th>
+                {% elif model_name == 'subject' %}
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Professors</th>
+                {% elif model_name == 'department' %}
+                    <th>Name</th>
+                {% endif %}
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+                <tr>
+                    {% if model_name == 'professor' %}
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.email }}</td>
+                        <td>
+                            {% for dept in item.departments.all %}
+                                {{ dept.name }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </td>
+                    {% elif model_name == 'stream' %}
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.division }}</td>
+                        <td>{{ item.department }}</td>
+                        <td>{{ item.semester }}</td>
+                    {% elif model_name == 'location' %}
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.get_location_type_display }}</td>
+                        <td>{{ item.floor }}</td>
+                    {% elif model_name == 'subject' %}
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.code }}</td>
+                        <td>
+                            {% for prof in item.professors.all %}
+                                {{ prof.name }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </td>
+                    {% elif model_name == 'department' %}
+                        <td>{{ item.name }}</td>
+                    {% endif %}
+                    <td>
+                        <a href="{% url 'edit_data' model_name=model_name pk=item.id %}">Edit</a> |
+                        <a href="{% url 'delete_data' model_name=model_name pk=item.id %}">Delete</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

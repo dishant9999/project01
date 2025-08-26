@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        nav {
+            background-color: #f2f2f2;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        nav a {
+            margin-right: 15px;
+            text-decoration: none;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
+        <a href="{% url 'location_sheet' %}">Location Sheet</a>
+        <a href="{% url 'logout' %}">Logout</a>
+    </nav>
+    <h1>Admin Dashboard</h1>
+    <p>Welcome, {{ request.user.username }}!</p>
+
+    <h2>Timetable</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Stream</th>
+                <th>Day</th>
+                <th>Time</th>
+                <th>Subject</th>
+                <th>Professor</th>
+                <th>Location</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in timetable_entries %}
+            <tr>
+                <td>{{ entry.stream.name }} - Sem {{ entry.stream.semester }}</td>
+                <td>{{ entry.day_of_week|upper }}</td>
+                <td>{{ entry.start_time }} - {{ entry.end_time }}</td>
+                <td>{{ entry.subject.name }}</td>
+                <td>{{ entry.professor.name }}</td>
+                <td>{{ entry.location.name }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

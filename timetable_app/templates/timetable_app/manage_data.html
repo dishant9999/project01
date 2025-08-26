@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Data</title>
+    <style>
+        body { font-family: sans-serif; }
+        nav { background-color: #f2f2f2; padding: 10px; margin-bottom: 20px; }
+        nav a { margin-right: 15px; text-decoration: none; color: #333; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="{% url 'manage_data' %}">Manage Data</a>
+        <a href="{% url 'logout' %}">Logout</a>
+    </nav>
+    <h1>Manage University Data</h1>
+    <p>Welcome, {{ request.user.username }}!</p>
+
+    <h2>Manage Professors</h2>
+    <a href="{% url 'add_data' 'professor' %}">Add New Professor</a>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Departments</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in professors %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.email }}</td>
+                    <td>
+                        {% for dept in item.departments.all %}
+                            {{ dept.name }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{% url 'edit_data' model_name='professor' pk=item.id %}">Edit</a> |
+                        <a href="{% url 'delete_data' model_name='professor' pk=item.id %}">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4">No professors added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h2>Manage Streams</h2>
+    <a href="{% url 'add_data' 'stream' %}">Add New Stream</a>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Division</th>
+                <th>Semester</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in streams %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.department }}</td>
+                    <td>{{ item.division }}</td>
+                    <td>{{ item.semester }}</td>
+                    <td>
+                        <a href="{% url 'edit_data' model_name='stream' pk=item.id %}">Edit</a> |
+                        <a href="{% url 'delete_data' model_name='stream' pk=item.id %}">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">No streams added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h2>Manage Locations</h2>
+    <a href="{% url 'add_data' 'location' %}">Add New Location</a>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Floor</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in locations %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.get_location_type_display }}</td>
+                    <td>{{ item.floor }}</td>
+                    <td>
+                        <a href="{% url 'edit_data' model_name='location' pk=item.id %}">Edit</a> |
+                        <a href="{% url 'delete_data' model_name='location' pk=item.id %}">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4">No locations added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h2>Manage Subjects</h2>
+    <a href="{% url 'add_data' 'subject' %}">Add New Subject</a>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Code</th>
+                <th>Professors</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in subjects %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.code }}</td>
+                    <td>
+                        {% for prof in item.professors.all %}
+                            {{ prof.name }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{% url 'edit_data' model_name='subject' pk=item.id %}">Edit</a> |
+                        <a href="{% url 'delete_data' model_name='subject' pk=item.id %}">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4">No subjects added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h2>Manage Time Slots</h2>
+    <a href="{% url 'add_data' 'timeslot' %}">Add New Time Slot</a>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in time_slots %}
+                <tr>
+                    <td>{{ item.start_time }}</td>
+                    <td>{{ item.end_time }}</td>
+                    <td>
+                        <a href="{% url 'edit_data' model_name='timeslot' pk=item.id %}">Edit</a> |
+                        <a href="{% url 'delete_data' model_name='timeslot' pk=item.id %}">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3">No time slots added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h2>Manage Departments</h2>
+    <a href="{% url 'add_data' 'department' %}">Add New Department</a>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in departments %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>
+                        <a href="{% url 'edit_data' model_name='department' pk=item.id %}">Edit</a> |
+                        <a href="{% url 'delete_data' model_name='department' pk=item.id %}">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="2">No departments added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

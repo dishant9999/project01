@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Location Sheet</title>
+</head>
+<body>
+    <h1>Location Sheet</h1>
+    <p><a href="{% url 'admin_dashboard' %}">Back to Admin Dashboard</a></p>
+
+    <form method="get">
+        <label for="location_type">Filter by Type:</label>
+        <select name="location_type" id="location_type">
+            <option value="">All</option>
+            {% for type in location_types %}
+            <option value="{{ type }}" {% if selected_type == type %}selected{% endif %}>{{ type }}</option>
+            {% endfor %}
+        </select>
+        <label for="floor">Filter by Floor:</label>
+        <input type="text" name="floor" id="floor" value="{{ selected_floor }}">
+        <button type="submit">Filter</button>
+    </form>
+    <br>
+    <a href="{% url 'download_location_sheet' %}?location_type={{ selected_type }}&floor={{ selected_floor }}">Download as CSV</a>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Floor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for location in locations %}
+            <tr>
+                <td>{{ location.name }}</td>
+                <td>{{ location.get_location_type_display }}</td>
+                <td>{{ location.floor }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3">No locations found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Validation Error</title>
+</head>
+<body>
+    <h1>Data Validation Failed</h1>
+    <p>The timetable cannot be generated because of the following data issues. Please fix them using the <a href="{% url 'manage_data' %}">Manage Data</a> page.</p>
+    <ul>
+        {% for error in errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+    <p><a href="{% url 'dashboard' %}">Back to Dashboard</a></p>
+</body>
+</html>
