@@ -1,12 +1,10 @@
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Dashboard</title>
     <style>
-        .completed {
-            text-decoration: line-through;
-        }
         nav {
             background-color: #f2f2f2;
             padding: 10px;
@@ -17,37 +15,22 @@
             text-decoration: none;
             color: #333;
         }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
+        .timetable-grid, .location-grid {
             width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgb(0,0,0);
-            background-color: rgba(0,0,0,0.4);
-            padding-top: 60px;
+            border-collapse: collapse;
+            margin-top: 20px;
         }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
+        .timetable-grid th, .timetable-grid td,
+        .location-grid th, .location-grid td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
         }
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
+        .timetable-grid th, .location-grid th {
+            background-color: #f2f2f2;
         }
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
+        .timetable-grid tr:nth-child(even) {
+            background-color: #f9f9f9;
         }
     </style>
 </head>
@@ -55,269 +38,186 @@
     <nav>
         <a href="{% url 'home' %}">Home</a>
         <a href="{% url 'dashboard' %}">Dashboard</a>
-        {% if request.user.is_superuser or request.user.role == 'admin' %}
+        {% if is_admin %}
             <a href="{% url 'manage_data' %}">Manage Data</a>
+            <a href="{% url 'manage_timetable' %}">Manage Timetable</a>
         {% endif %}
         <a href="{% url 'logout' %}">Logout</a>
     </nav>
     <h1>Dashboard</h1>
     <p>Welcome, {{ request.user.username }}!</p>
 
-    {% if request.user.is_superuser or request.user.role == 'admin' %}
-        <a href="{% url 'run_generator' %}">
-            <button>Generate Timetable</button>
-        </a>
-        <hr>
+    {% if is_admin %}
         <h2>University Timetable</h2>
-        <form method="get" action="{% url 'dashboard' %}">
-            <label for="stream_id">Filter by Stream:</label>
-            <select name="stream_id" id="stream_id">
-                <option value="">All</option>
-                {% for stream in streams %}
-                    <option value="{{ stream.id }}" {% if selected_stream_id|urlencode == stream.id|urlencode %}selected{% endif %}>
-                        {{ stream.name }} - Sem {{ stream.semester }}
+        <form method="get" action="{% url 'dashboard' %}" id="timetable-filter-form">
+            <label for="department_id">Department:</label>
+            <select name="department_id" id="department_id">
+                <option value="">Select Department</option>
+                {% for department in departments %}
+                    <option value="{{ department.id }}" {% if selected_department_id|urlencode == department.id|urlencode %}selected{% endif %}>
+                        {{ department.name }}
                     </option>
                 {% endfor %}
             </select>
-            <button type="submit">Filter</button>
-            <a href="{% url 'download_timetable' %}?stream_id={{ selected_stream_id }}">[ Download as CSV ]</a>
+
+            <label for="stream_id">Stream:</label>
+            <select name="stream_id" id="stream_id">
+                <option value="">Select Stream</option>
+            </select>
+
+            <label for="semester">Semester:</label>
+            <select name="semester" id="semester">
+                <option value="">Select Semester</option>
+            </select>
+
+            <label for="division">Division:</label>
+            <select name="division" id="division">
+                <option value="">Select Division</option>
+            </select>
+            
+            <button type="submit">Filter Timetable</button>
         </form>
+    {% endif %}
+
+    {% if timetable_entries and filtered_locations %}
+        <p><a href="{% url 'download_timetable' %}?stream_id={{ selected_stream_id }}">Download Timetable as CSV</a></p>
+        <table class="timetable-grid">
+            <thead>
+                <tr>
+                    <th>Time/Day</th>
+                    {% for day in filtered_locations.days %}
+                        <th>{{ day|upper }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for timeslot in filtered_locations.time_slots %}
+                <tr>
+                    <td>{{ timeslot }}</td>
+                    {% for day in filtered_locations.days %}
+                        <td>
+                            {% for entry in timetable_entries %}
+                                {% if entry.day_of_week == day and entry.timeslot == timeslot %}
+                                    <strong>{{ entry.subject.code }}</strong><br>
+                                    {{ entry.professor.name }}<br>
+                                    {{ entry.location.name }}
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <hr>
+
+        <h2>Location Sheet</h2>
+        <p><a href="{% url 'download_location_sheet' %}?stream_id={{ selected_stream_id }}">Download Location Sheet as CSV</a></p>
+        <table class="location-grid">
+            <thead>
+                <tr>
+                    <th>Time/Day</th>
+                    {% for day in filtered_locations.days %}
+                        <th>{{ day|upper }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for timeslot in filtered_locations.time_slots %}
+                <tr>
+                    <td>{{ timeslot }}</td>
+                    {% for day in filtered_locations.days %}
+                        <td>
+                            {% if filtered_locations.grid|get_item:timeslot.id|get_item:day != 'N/A' %}
+                                {{ filtered_locations.grid|get_item:timeslot.id|get_item:day }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
     {% else %}
-        <h2>Your Timetable</h2>
+        <p>Please select a Department, Stream, Semester, and Division to view the timetable.</p>
     {% endif %}
-
-    <table border="1">
-        <thead>
-            <tr>
-                {% if request.user.is_superuser or request.user.role == 'admin' %}
-                    <th>Stream</th>
-                {% endif %}
-                <th>Day</th>
-                <th>Time</th>
-                <th>Subject</th>
-                <th>Professor</th>
-                <th>Location</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for entry in timetable_entries %}
-            <tr>
-                {% if request.user.is_superuser or request.user.role == 'admin' %}
-                    <td>{{ entry.stream.name }} - Sem {{ entry.stream.semester }}</td>
-                {% endif %}
-                <td>{{ entry.get_day_of_week_display }}</td>
-                <td>{{ entry.timeslot }}</td>
-                <td>{{ entry.subject.name }}</td>
-                <td>{{ entry.professor.name }}</td>
-                <td>{{ entry.location.name }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6">No timetable entries found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <hr>
-
-    <h2>Task Scheduler</h2>
-    <h3>Add a New Task</h3>
-    <form method="post" action="{% url 'dashboard' %}">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" name="add_task">Add Task</button>
-    </form>
-    <hr>
-    <h3>Scheduled Tasks</h3>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Task Name</th>
-                <th>Priority</th>
-                <th>Estimated Time</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for task in scheduled_tasks %}
-            <tr>
-                <td>{{ task.task_name }}</td>
-                <td>{{ task.get_priority_display }}</td>
-                <td>{{ task.estimated_time }}</td>
-                <td>
-                    <a href="#" onclick="showModal('{{ task.id }}')">Mark as Complete</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4">No tasks are currently scheduled.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <hr>
-    <h3>Pending Tasks</h3>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Task Name</th>
-                <th>Priority</th>
-                <th>Estimated Time</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for task in pending_tasks %}
-            <tr>
-                <td>{{ task.task_name }}</td>
-                <td>{{ task.get_priority_display }}</td>
-                <td>{{ task.estimated_time }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3">All tasks have been scheduled!</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <hr>
-    <h2>Location Sheet</h2>
-    <form method="get" action="{% url 'dashboard' %}">
-        <label for="location_type">Filter by Type:</label>
-        <select name="location_type" id="location_type">
-            <option value="">All</option>
-            {% for type in location_types %}
-            <option value="{{ type }}" {% if selected_location_type == type %}selected{% endif %}>{{ type }}</option>
-            {% endfor %}
-        </select>
-        <label for="floor">Filter by Floor:</label>
-        <input type="text" name="floor" id="floor" value="{{ selected_location_floor }}">
-        <button type="submit">Filter</button>
-        <a href="{% url 'download_location_sheet' %}?location_type={{ selected_location_type }}&floor={{ selected_location_floor }}">Download as CSV</a>
-    </form>
-
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Floor</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for location in locations %}
-            <tr>
-                <td>{{ location.name }}</td>
-                <td>{{ location.get_location_type_display }}</td>
-                <td>{{ location.floor }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3">No locations found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    {% if request.user.is_superuser or request.user.role == 'admin' %}
-        <hr>
-        <h2>User Rights Management</h2>
-        <table border="1">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Change Role</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user_obj in all_users %}
-                <tr>
-                    <td>{{ user_obj.username }}</td>
-                    <td>{{ user_obj.get_role_display }}</td>
-                    <td>
-                        <form method="post" action="{% url 'update_user_role' user_obj.id %}">
-                            {% csrf_token %}
-                            <select name="role">
-                                {% for choice in role_choices %}
-                                    <option value="{{ choice.0 }}" {% if user_obj.role == choice.0 %}selected{% endif %}>
-                                        {{ choice.1 }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit">Update</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <hr>
-        <h2>Task Management</h2>
-        <table border="1">
-            <thead>
-                <tr>
-                    <th>User</th>
-                    <th>Task Name</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for task in all_tasks %}
-                <tr>
-                    <td>{{ task.user.username }}</td>
-                    <td>{{ task.task_name }}</td>
-                    <td>{{ task.get_priority_display }}</td>
-                    <td>
-                        {% if task.is_completed %}
-                            Completed
-                        {% else %}
-                            Pending
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
-
-    <div id="rescheduleModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Task Completed!</h2>
-            <p>Please enter your new available time for the day (in minutes) to reschedule pending tasks:</p>
-            <form method="post" action="{% url 'reschedule_tasks' %}">
-                {% csrf_token %}
-                <input type="hidden" id="task_id_input" name="task_id">
-                <input type="number" name="free_time" placeholder="e.g., 60" required>
-                <button type="submit">Reschedule</button>
-            </form>
-        </div>
-    </div>
 
     <script>
-        var modal = document.getElementById("rescheduleModal");
-        var span = document.getElementsByClassName("close")[0];
-        var taskToCompleteId = null;
+        const departmentSelect = document.getElementById('department_id');
+        const streamSelect = document.getElementById('stream_id');
+        const semesterSelect = document.getElementById('semester');
+        const divisionSelect = document.getElementById('division');
 
-        function showModal(taskId) {
-            taskToCompleteId = taskId;
-            document.getElementById("task_id_input").value = taskId;
-            modal.style.display = "block";
-        }
-
-        span.onclick = function() {
-            modal.style.display = "none";
-        }
-
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
+        // Function to load streams based on the selected department
+        function loadStreams() {
+            const departmentId = departmentSelect.value;
+            streamSelect.innerHTML = '<option value="">Select Stream</option>';
+            semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+            divisionSelect.innerHTML = '<option value="">Select Division</option>';
+            
+            if (departmentId) {
+                fetch(`/get_streams/?department_id=${departmentId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(stream => {
+                            const option = document.createElement('option');
+                            option.value = stream.id;
+                            option.textContent = stream.name;
+                            if (stream.id == '{{ selected_stream_id }}') {
+                                option.selected = true;
+                            }
+                            streamSelect.appendChild(option);
+                        });
+                        loadSemestersAndDivisions();
+                    });
             }
         }
+
+        // Function to load semesters and divisions based on the selected stream
+        function loadSemestersAndDivisions() {
+            const streamId = streamSelect.value;
+            semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+            divisionSelect.innerHTML = '<option value="">Select Division</option>';
+
+            if (streamId) {
+                fetch(`/get_semesters_and_divisions/?stream_id=${streamId}&department_id=${departmentSelect.value}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.semesters.forEach(semester => {
+                            const option = document.createElement('option');
+                            option.value = semester;
+                            option.textContent = semester;
+                            if (semester == '{{ selected_semester }}') {
+                                option.selected = true;
+                            }
+                            semesterSelect.appendChild(option);
+                        });
+                        data.divisions.forEach(division => {
+                            const option = document.createElement('option');
+                            option.value = division;
+                            option.textContent = division;
+                            if (division == '{{ selected_division }}') {
+                                option.selected = true;
+                            }
+                            divisionSelect.appendChild(option);
+                        });
+                    });
+            }
+        }
+
+        // Event listeners for the dropdowns
+        departmentSelect.addEventListener('change', loadStreams);
+        streamSelect.addEventListener('change', loadSemestersAndDivisions);
+
+        // Initial load of streams if a department is already selected
+        window.addEventListener('load', () => {
+            if (departmentSelect.value) {
+                loadStreams();
+            }
+        });
     </script>
 </body>
 </html>

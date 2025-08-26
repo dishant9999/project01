@@ -105,21 +105,3 @@ class TimetableEntry(models.Model):
 
     def __str__(self):
         return f"{self.stream} | {self.subject} | {self.day_of_week} ({self.timeslot})"
-
-# Model for user tasks.
-class Task(models.Model):
-    PRIORITY_CHOICES = (
-        ('high', 'High'),
-        ('medium', 'Medium'),
-        ('low', 'Low'),
-    )
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    task_name = models.CharField(max_length=255)
-    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES)
-    estimated_time = models.DurationField() # Stores hours and minutes
-    is_completed = models.BooleanField(default=False)
-    is_scheduled = models.BooleanField(default=False)
-    rescheduled_time = models.DurationField(null=True, blank=True)
-
-    def __str__(self):
-        return self.task_name

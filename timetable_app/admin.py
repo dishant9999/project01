@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Department, Location, Professor, Subject, Stream, TimetableEntry, Task
+from .models import CustomUser, Department, Location, Professor, Subject, Stream, TimetableEntry
 
 # Register your models here.
 admin.site.register(CustomUser)
@@ -9,4 +9,3 @@ admin.site.register(Professor)
 admin.site.register(Subject)
 admin.site.register(Stream)
 admin.site.register(TimetableEntry)
-admin.site.register(Task)

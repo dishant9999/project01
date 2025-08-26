@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import CustomUser, Task, Professor, Stream, Location, Subject, Department, TimeSlot
+from .models import CustomUser, Professor, Stream, Location, Subject, Department, TimeSlot
 
 class CustomUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
@@ -13,11 +13,6 @@ class CustomUserCreationForm(UserCreationForm):
         if commit:
             user.save()
         return user
-
-class TaskForm(forms.ModelForm):
-    class Meta:
-        model = Task
-        fields = ('task_name', 'priority', 'estimated_time')
 
 class ProfessorForm(forms.ModelForm):
     class Meta:

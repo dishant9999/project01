@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Timetable</title>
+    <style>
+        nav {
+            background-color: #f2f2f2;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        nav a {
+            margin-right: 15px;
+            text-decoration: none;
+            color: #333;
+        }
+        .timetable-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .timetable-grid th, .timetable-grid td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+            position: relative;
+        }
+        .timetable-grid th {
+            background-color: #f2f2f2;
+        }
+        .timetable-grid td.selected {
+            background-color: #e0f7fa;
+        }
+        .timetable-grid-cell-content {
+            min-height: 50px;
+        }
+        .timetable-grid-cell-content p {
+            margin: 0;
+            padding: 0;
+        }
+        .add-subject-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #555;
+        }
+        .add-subject-btn:hover {
+            color: #000;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="{% url 'manage_data' %}">Manage Data</a>
+        <a href="{% url 'manage_timetable' %}">Manage Timetable</a>
+        <a href="{% url 'logout' %}">Logout</a>
+    </nav>
+    <h1>Manage Timetable</h1>
+
+    <form method="get" id="filter-form">
+        <label for="department_id">Department:</label>
+        <select name="department_id" id="department_id">
+            <option value="">Select Department</option>
+            {% for department in departments %}
+                <option value="{{ department.id }}" {% if request.GET.department_id|urlencode == department.id|urlencode %}selected{% endif %}>
+                    {{ department.name }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label for="stream_id">Stream:</label>
+        <select name="stream_id" id="stream_id">
+            <option value="">Select Stream</option>
+        </select>
+
+        <label for="semester">Semester:</label>
+        <select name="semester" id="semester">
+            <option value="">Select Semester</option>
+        </select>
+
+        <label for="division">Division:</label>
+        <select name="division" id="division">
+            <option value="">Select Division</option>
+        </select>
+    </form>
+    
+    <div id="timetable-editor" style="display: none;">
+        <hr>
+        <h2>Timetable Editor</h2>
+        
+        <button type="button" id="save-timetable-button">Save Timetable</button>
+        <p id="save-status"></p>
+        
+        <div id="grid-container"></div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Timetable Entry</h2>
+            <p>Editing: <span id="modal-cell-info"></span></p>
+            <form id="edit-form">
+                <input type="hidden" id="modal-day">
+                <input type="hidden" id="modal-timeslot">
+
+                <label for="modal-subjects">Subjects:</label><br>
+                <select id="modal-subjects" multiple size="5"></select><br><br>
+
+                <label for="modal-professors">Professor:</label><br>
+                <select id="modal-professors"></select><br><br>
+                
+                <label for="modal-location-type">Location Type:</label><br>
+                <select id="modal-location-type">
+                    <option value="">Select Type</option>
+                    <option value="classroom">Classroom</option>
+                    <option value="lab">Lab</option>
+                    <option value="auditorium">Auditorium</option>
+                    <option value="hall">Hall</option>
+                </select><br><br>
+
+                <label for="modal-locations">Location:</label><br>
+                <select id="modal-locations"></select><br><br>
+
+                <button type="button" id="save-cell-button">Save Entry</button>
+                <button type="button" id="delete-cell-button">Clear Entry</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const departmentSelect = document.getElementById('department_id');
+        const streamSelect = document.getElementById('stream_id');
+        const semesterSelect = document.getElementById('semester');
+        const divisionSelect = document.getElementById('division');
+        const timetableEditor = document.getElementById('timetable-editor');
+        const gridContainer = document.getElementById('grid-container');
+        
+        const editModal = document.getElementById('editModal');
+        const closeBtn = document.getElementsByClassName('close')[0];
+        
+        const modalDayInput = document.getElementById('modal-day');
+        const modalTimeslotInput = document.getElementById('modal-timeslot');
+        const modalSubjectsSelect = document.getElementById('modal-subjects');
+        const modalProfessorsSelect = document.getElementById('modal-professors');
+        const modalLocationTypeSelect = document.getElementById('modal-location-type');
+        const modalLocationsSelect = document.getElementById('modal-locations');
+        const saveCellButton = document.getElementById('save-cell-button');
+        const deleteCellButton = document.getElementById('delete-cell-button');
+        const saveTimetableButton = document.getElementById('save-timetable-button');
+        
+        let allTimeSlots = [];
+        let allDays = ['mon', 'tue', 'wed', 'thu', 'fri'];
+        let currentTimetableData = {};
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        function loadStreams() {
+            const departmentId = departmentSelect.value;
+            streamSelect.innerHTML = '<option value="">Select Stream</option>';
+            semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+            divisionSelect.innerHTML = '<option value="">Select Division</option>';
+            
+            if (departmentId) {
+                fetch(`/get_streams/?department_id=${departmentId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(stream => {
+                            const option = document.createElement('option');
+                            option.value = stream.id;
+                            option.textContent = stream.name;
+                            streamSelect.appendChild(option);
+                        });
+                        if ('{{ request.GET.stream_id }}') {
+                             streamSelect.value = '{{ request.GET.stream_id }}';
+                             loadSemestersAndDivisions();
+                        }
+                    });
+            }
+        }
+
+        function loadSemestersAndDivisions() {
+            const streamId = streamSelect.value;
+            semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+            divisionSelect.innerHTML = '<option value="">Select Division</option>';
+
+            if (streamId) {
+                fetch(`/get_semesters_and_divisions/?stream_id=${streamId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.semesters.forEach(semester => {
+                            const option = document.createElement('option');
+                            option.value = semester;
+                            option.textContent = semester;
+                            semesterSelect.appendChild(option);
+                        });
+                        data.divisions.forEach(division => {
+                            const option = document.createElement('option');
+                            option.value = division;
+                            option.textContent = division;
+                            divisionSelect.appendChild(option);
+                        });
+                        if ('{{ request.GET.semester }}') {
+                            semesterSelect.value = '{{ request.GET.semester }}';
+                        }
+                        if ('{{ request.GET.division }}') {
+                            divisionSelect.value = '{{ request.GET.division }}';
+                        }
+                        toggleTimetableEditor();
+                    });
+            }
+        }
+
+        function toggleTimetableEditor() {
+            if (departmentSelect.value && streamSelect.value && semesterSelect.value && divisionSelect.value) {
+                timetableEditor.style.display = 'block';
+                fetchTimetableData();
+            } else {
+                timetableEditor.style.display = 'none';
+            }
+        }
+        
+        function fetchTimetableData() {
+            const streamId = streamSelect.value;
+            fetch(`/api/get_timetable_data/?stream_id=${streamId}`)
+                .then(response => response.json())
+                .then(data => {
+                    allTimeSlots = data.time_slots;
+                    currentTimetableData = data.timetable_entries;
+                    createTimetableGrid();
+                });
+        }
+        
+        function createTimetableGrid() {
+            gridContainer.innerHTML = '';
+            
+            const table = document.createElement('table');
+            table.classList.add('timetable-grid');
+            
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = '<th>Time Slot</th>';
+            allDays.forEach(day => {
+                headerRow.innerHTML += `<th>${day.toUpperCase()}</th>`;
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            const tbody = document.createElement('tbody');
+            allTimeSlots.forEach(timeslot => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${timeslot.start_time.substring(0, 5)} - ${timeslot.end_time.substring(0, 5)}</td>`;
+                allDays.forEach(day => {
+                    const cell = document.createElement('td');
+                    cell.dataset.day = day;
+                    cell.dataset.timeslotId = timeslot.id;
+                    const cellData = currentTimetableData[day] ? currentTimetableData[day][timeslot.id] : null;
+
+                    if (cellData) {
+                        cell.innerHTML = `
+                            <p><strong>${cellData.subject_code}</strong></p>
+                            <p>${cellData.professor_name}</p>
+                            <p>${cellData.location_name}</p>
+                        `;
+                    } else {
+                        cell.innerHTML = 'Empty';
+                    }
+                    
+                    cell.addEventListener('click', () => openModal(cell, day, timeslot));
+                    row.appendChild(cell);
+                });
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            
+            gridContainer.appendChild(table);
+        }
+
+        function openModal(cell, day, timeslot) {
+            modalDayInput.value = day;
+            modalTimeslotInput.value = timeslot.id;
+            document.getElementById('modal-cell-info').textContent = `${day.toUpperCase()} at ${timeslot.start_time.substring(0, 5)} - ${timeslot.end_time.substring(0, 5)}`;
+            
+            fetch(`/api/get_subjects/?stream_id=${streamSelect.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    modalSubjectsSelect.innerHTML = '<option value="">Select Subject</option>';
+                    data.forEach(subject => {
+                        const option = document.createElement('option');
+                        option.value = subject.id;
+                        option.textContent = subject.name;
+                        modalSubjectsSelect.appendChild(option);
+                    });
+                    
+                    const cellData = currentTimetableData[day] ? currentTimetableData[day][timeslot.id] : null;
+                    if (cellData && cellData.subject_id) {
+                        modalSubjectsSelect.value = cellData.subject_id;
+                        loadProfessors();
+                    }
+                });
+            
+            modalProfessorsSelect.innerHTML = '<option value="">Select Professor</option>';
+            modalLocationTypeSelect.value = '';
+            modalLocationsSelect.innerHTML = '<option value="">Select Location</option>';
+
+            const cellData = currentTimetableData[day] ? currentTimetableData[day][timeslot.id] : null;
+            if (cellData && cellData.location_id) {
+                // You would need to fetch the location type for this location and set the modalLocationTypeSelect.
+                // For now, let's assume you have this information.
+                // modalLocationTypeSelect.value = 'lab';
+                // loadLocations();
+            }
+
+            editModal.style.display = 'block';
+        }
+        
+        closeBtn.onclick = function() {
+            editModal.style.display = 'none';
+        };
+
+        window.onclick = function(event) {
+            if (event.target == editModal) {
+                editModal.style.display = 'none';
+            }
+        };
+
+        modalSubjectsSelect.addEventListener('change', () => {
+            loadProfessors();
+        });
+
+        modalLocationTypeSelect.addEventListener('change', () => {
+            loadLocations();
+        });
+        
+        function loadProfessors() {
+            const subjectId = modalSubjectsSelect.value;
+            modalProfessorsSelect.innerHTML = '<option value="">Select Professor</option>';
+            if (subjectId) {
+                fetch(`/api/get_professors/?subject_id=${subjectId}&day=${modalDayInput.value}&timeslot_id=${modalTimeslotInput.value}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(professor => {
+                            const option = document.createElement('option');
+                            option.value = professor.id;
+                            option.textContent = `${professor.name} (${professor.conflict ? 'Unavailable' : 'Available'})`;
+                            if (professor.conflict) {
+                                option.disabled = true;
+                            }
+                            modalProfessorsSelect.appendChild(option);
+                        });
+                        const cellData = currentTimetableData[modalDayInput.value] ? currentTimetableData[modalDayInput.value][modalTimeslotInput.value] : null;
+                        if (cellData && cellData.professor_id) {
+                            modalProfessorsSelect.value = cellData.professor_id;
+                        }
+                    });
+            }
+        }
+        
+        function loadLocations() {
+            const locationType = modalLocationTypeSelect.value;
+            modalLocationsSelect.innerHTML = '<option value="">Select Location</option>';
+            if (locationType) {
+                fetch(`/api/get_locations/?location_type=${locationType}&day=${modalDayInput.value}&timeslot_id=${modalTimeslotInput.value}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(location => {
+                            const option = document.createElement('option');
+                            option.value = location.id;
+                            option.textContent = `${location.name} (${location.conflict ? 'Unavailable' : 'Available'})`;
+                            if (location.conflict) {
+                                option.disabled = true;
+                            }
+                            modalLocationsSelect.appendChild(option);
+                        });
+                        const cellData = currentTimetableData[modalDayInput.value] ? currentTimetableData[modalDayInput.value][modalTimeslotInput.value] : null;
+                        if (cellData && cellData.location_id) {
+                            modalLocationsSelect.value = cellData.location_id;
+                        }
+                    });
+            }
+        }
+        
+        saveCellButton.addEventListener('click', () => {
+            const streamId = streamSelect.value;
+            const day = modalDayInput.value;
+            const timeslotId = modalTimeslotInput.value;
+            const subjectId = modalSubjectsSelect.value;
+            const professorId = modalProfessorsSelect.value;
+            const locationId = modalLocationsSelect.value;
+            
+            const payload = {
+                stream_id: streamId,
+                day_of_week: day,
+                timeslot_id: timeslotId,
+                subject_id: subjectId,
+                professor_id: professorId,
+                location_id: locationId,
+            };
+
+            fetch('/api/save_timetable_entry/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    editModal.style.display = 'none';
+                    fetchTimetableData(); // Refresh the grid
+                } else {
+                    alert('Error saving entry: ' + data.error);
+                }
+            });
+        });
+
+        deleteCellButton.addEventListener('click', () => {
+            const streamId = streamSelect.value;
+            const day = modalDayInput.value;
+            const timeslotId = modalTimeslotInput.value;
+            
+            const payload = {
+                stream_id: streamId,
+                day_of_week: day,
+                timeslot_id: timeslotId,
+            };
+
+            fetch('/api/delete_timetable_entry/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    editModal.style.display = 'none';
+                    fetchTimetableData(); // Refresh the grid
+                } else {
+                    alert('Error deleting entry: ' + data.error);
+                }
+            });
+        });
+
+        // Event listeners for the filter dropdowns
+        departmentSelect.addEventListener('change', loadStreams);
+        streamSelect.addEventListener('change', loadSemestersAndDivisions);
+        semesterSelect.addEventListener('change', toggleTimetableEditor);
+        divisionSelect.addEventListener('change', toggleTimetableEditor);
+
+        saveTimetableButton.addEventListener('click', () => {
+            // Save logic is handled by individual cell saves. This button can
+            // be used to trigger a full validation check or a confirmation
+            // before generating the final timetable.
+            // For now, it's a simple confirmation.
+            alert('Timetable saved successfully!');
+        });
+        
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            if ('{{ request.GET.department_id }}') {
+                departmentSelect.value = '{{ request.GET.department_id }}';
+                loadStreams();
+            }
+        });
+    </script>
+</body>
+</html>
